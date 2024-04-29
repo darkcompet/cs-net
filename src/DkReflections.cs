@@ -4,27 +4,33 @@ using System.Reflection;
 using System.Text.Json.Serialization;
 
 public class DkReflections {
+	/// <summary>
 	/// Create new object from given type T, result as `dstObj`.
 	/// Then copy all properties which be annotated with `JsonPropertyNameAttribute` from `srcObj` to `dstObj`.
+	/// </summary>
+	/// <typeparam name="T"></typeparam>
+	/// <param name="srcObj"></param>
+	/// <returns></returns>
 	public static T CloneJsonAnnotatedProperties<T>(object srcObj) where T : class {
 		var dstObj = DkObjects.NewInstace<T>();
 		CopyJsonAnnotatedProperties(srcObj, dstObj);
 		return dstObj;
 	}
 
+	/// <summary>
 	/// Copy properties which be annotated with `JsonPropertyNameAttribute` from `srcObj` to `dstObj`.
 	/// Get properties: https://docs.microsoft.com/en-us/dotnet/api/system.type.getproperties
+	/// </summary>
+	/// <param name="srcObj"></param>
+	/// <param name="dstObj"></param>
 	public static void CopyJsonAnnotatedProperties(object srcObj, object dstObj) {
 		var name2prop_src = _CollectJsonAnnotatedPropertiesRecursively(srcObj.GetType());
 		var name2prop_dst = _CollectJsonAnnotatedPropertiesRecursively(dstObj.GetType());
 
-		foreach (var item_dst in name2prop_dst) {
-			// Look up at this property
-			var targetPropName = item_dst.Key;
-
+		foreach (var (propertyName, propertyInfo) in name2prop_dst) {
 			// Copy value at the property from srcObj -> dstObj
-			if (name2prop_src.TryGetValue(targetPropName, out var prop_src)) {
-				item_dst.Value.SetValue(dstObj, prop_src.GetValue(srcObj));
+			if (name2prop_src.TryGetValue(propertyName, out var propertyInfo_src)) {
+				propertyInfo.SetValue(dstObj, propertyInfo_src.GetValue(srcObj));
 			}
 		}
 	}
@@ -32,11 +38,10 @@ public class DkReflections {
 	public static void TrimJsonAnnotatedProperties(object obj) {
 		var name2prop = _CollectJsonAnnotatedPropertiesRecursively(obj.GetType());
 
-		foreach (var kvPair in name2prop) {
-			var prop = kvPair.Value;
-			var propValue = prop.GetValue(obj);
-			if (propValue is string value) {
-				prop.SetValue(obj, value.Trim());
+		foreach (var (_, propertyInfo) in name2prop) {
+			var propertyValue = propertyInfo.GetValue(obj);
+			if (propertyValue is string value) {
+				propertyInfo.SetValue(obj, value.Trim());
 			}
 		}
 	}
@@ -49,7 +54,7 @@ public class DkReflections {
 			var prop = props[index];
 			var attribute = prop.GetCustomAttribute<JsonPropertyNameAttribute>();
 			if (attribute != null) {
-				// Use Set (do not use Add to avoid exception when duplicated key)
+				// Use Set (don't use Add to avoid exception when duplicate key)
 				result_name2prop[attribute.Name] = prop;
 			}
 		}
