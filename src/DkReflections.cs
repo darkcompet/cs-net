@@ -1,5 +1,6 @@
 namespace Tool.Compet.Core;
 
+using System.Collections;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -40,8 +41,26 @@ public class DkReflections {
 
 		foreach (var (_, propertyInfo) in name2prop) {
 			var propertyValue = propertyInfo.GetValue(obj);
-			if (propertyValue is string value) {
-				propertyInfo.SetValue(obj, value.Trim());
+
+			if (propertyValue is string str) {
+				propertyInfo.SetValue(obj, str.Trim());
+			}
+			else if (propertyValue is IList<string> arr) {
+				for (var i = arr.Count - 1; i >= 0; --i) {
+					if (arr[i] != null) {
+						arr[i] = arr[i].Trim();
+					}
+				}
+			}
+			else if (propertyValue is IList<object> list) {
+				for (var i = list.Count - 1; i >= 0; --i) {
+					if (list[i] != null) {
+						TrimJsonAnnotatedProperties(list[i]);
+					}
+				}
+			}
+			else if (propertyValue is object nextObj) {
+				TrimJsonAnnotatedProperties(nextObj);
 			}
 		}
 	}
