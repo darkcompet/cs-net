@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 
-public class RegisterAsSingletonIgnoreInterface : RegisterClass {
+public class RegisterAsSingletonIgnoreInterface : RegisterClassAttribute {
 	public RegisterAsSingletonIgnoreInterface() {
 		this.ServiceLifetime = ServiceLifetime.Singleton;
 	}

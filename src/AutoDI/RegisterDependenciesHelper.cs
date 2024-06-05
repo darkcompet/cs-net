@@ -32,7 +32,7 @@ public static class RegisterDependenciesHelper {
 		return assemblies;
 	}
 	private static bool FilterClassesWithRegisterClassAttribute(Type type) {
-		return type.GetCustomAttributes(typeof(RegisterClass), true).Length != 0 &&
+		return type.GetCustomAttributes(typeof(RegisterClassAttribute), true).Length != 0 &&
 			!type.IsAbstract &&
 			!type.IsGenericType &&
 			!type.IsNested

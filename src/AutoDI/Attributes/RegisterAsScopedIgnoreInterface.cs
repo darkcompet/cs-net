@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 
-public class RegisterAsScopedIgnoreInterface : RegisterClass {
+public class RegisterAsScopedIgnoreInterface : RegisterClassAttribute {
 	public RegisterAsScopedIgnoreInterface() {
 		this.ServiceLifetime = ServiceLifetime.Scoped;
 	}
