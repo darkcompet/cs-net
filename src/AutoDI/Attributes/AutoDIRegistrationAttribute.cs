@@ -9,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 /// default. The same as using <see cref="RegisterAsTransient"/>.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
-public class AutoDependencyRegistrationAttribute : Attribute {
-	protected ServiceLifetime ServiceLifetime { get; set; } = ServiceLifetime.Transient;
+public class AutoDIRegistrationAttribute : Attribute {
+	public static readonly Type AttributeType = typeof(AutoDIRegistrationAttribute);
+
+	protected ServiceLifetime serviceLifetime { get; set; }
 }

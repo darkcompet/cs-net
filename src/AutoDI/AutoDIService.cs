@@ -23,40 +23,32 @@ public static class AutoDIService {
 		var assemblies = GetAssemblies();
 		var registeredServices = FindRegisteredClassesByAttribute(assemblies);
 
-		Console.WriteLine($"------ registeredServices: {registeredServices.Count()}");
-		foreach (var regService in registeredServices) {
-			if (regService.serviceType is null) {
-				Console.WriteLine($"------------> service.ClassType is null");
-				continue;
+		foreach (var serviceInfo in registeredServices) {
+			// Register without interface
+			if (serviceInfo.ignoreInterface) {
+				services.Add(new ServiceDescriptor(
+					serviceInfo.serviceType!,
+					serviceInfo.serviceType!,
+					serviceInfo.serviceLifetime)
+				);
 			}
-			if (regService.ignoreInterface) {
-				AddServiceWithoutInterface(regService, services);
+			// Register with interface
+			else {
+				foreach (var implementation in serviceInfo.interfaceTypes) {
+					services.Add(new ServiceDescriptor(
+						implementation,
+						serviceInfo.serviceType,
+						serviceInfo.serviceLifetime)
+					);
+				}
 			}
-			else if (regService.interfaceTypes.Any()) {
-				AddServiceWithInterface(regService, services);
-			}
-			// else if (service is { ClassType: { }, IgnoreInterface: true }) {
-			// 	AddServiceWithoutInterface(service, serviceCollection);
-			// }
 		}
-
-		// Log.Logger.Information("{OverallCount} services were registered. {SingletonCount} singleton, {ScopedCount} scoped, {TransientCount} transient.",
-		// 	services.Count(),
-		// 	services.Count(x => x.ServiceLifetime == ServiceLifetime.Singleton),
-		// 	services.Count(x => x.ServiceLifetime == ServiceLifetime.Scoped),
-		// 	services.Count(x => x.ServiceLifetime == ServiceLifetime.Transient)
-		// );
 	}
 
 	public static IEnumerable<Assembly> GetAssemblies() {
 		var assemblies = new List<Assembly>();
 		foreach (var assemblyFilePath in Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll")) {
-			// try {
 			assemblies.Add(Assembly.Load(AssemblyName.GetAssemblyName(assemblyFilePath)));
-			// }
-			// catch (BadImageFormatException e) {
-			// 	Log.Logger.Error("{Assembly} could not be loaded", e.Source);
-			// }
 		}
 		return assemblies;
 	}
@@ -69,41 +61,37 @@ public static class AutoDIService {
 		// Map assemblies to services
 		var serviceInfos = new List<RegisterServiceInfo>();
 		foreach (var type in classes) {
-			var customAttribute = type.CustomAttributes.FirstOrDefault(att => IsRegisterable(att.AttributeType.FullName));
+			var customAttribute = type.CustomAttributes.FirstOrDefault(att => IsOurRegisterClass(att.AttributeType.FullName));
 			if (customAttribute != null) {
-				var attributeName = customAttribute.AttributeType.FullName!;
-				var serviceLifetime = GetServiceLifetime(attributeName);
-				var ignoreInterface = IsIgnoreInterface(attributeName);
-
+				var attributeFullName = customAttribute.AttributeType.FullName!;
 				var typeInfo = type.GetTypeInfo();
-				var registerServiceInfo = new RegisterServiceInfo {
+
+				serviceInfos.Add(new() {
 					serviceType = typeInfo,
 					interfaceTypes = typeInfo.ImplementedInterfaces,
-					serviceLifetime = serviceLifetime,
-					ignoreInterface = ignoreInterface
-				};
-				serviceInfos.Add(registerServiceInfo);
-				// Console.WriteLine($"--> sinfo: {sinfo.serviceType.FullName}, {sinfo.ignoreInterface}, {sinfo.serviceLifetime}");
+					serviceLifetime = CalcServiceLifetime(attributeFullName),
+					ignoreInterface = IsIgnoreInterface(attributeFullName)
+				});
 			}
 		}
 		return serviceInfos;
 	}
 
-	private static bool IsRegisterable(string? attributeName) {
-		return attributeName != null && (
-			attributeName.Contains(nameof(RegisterAsScoped)) ||
-			attributeName.Contains(nameof(RegisterAsSingleton)) ||
-			attributeName.Contains(nameof(RegisterAsTransient)) ||
-			attributeName.Contains(nameof(RegisterAsScopedIgnoreInterface)) ||
-			attributeName.Contains(nameof(RegisterAsSingletonIgnoreInterface)) ||
-			attributeName.Contains(nameof(RegisterAsTransientIgnoreInterface))
+	private static bool IsOurRegisterClass(string? attributeFullName) {
+		return attributeFullName != null && (
+			attributeFullName == RegisterAsScoped.FullName ||
+			attributeFullName == RegisterAsSingleton.FullName ||
+			attributeFullName == RegisterAsTransient.FullName ||
+			attributeFullName == RegisterAsScopedWithInterface.FullName ||
+			attributeFullName == RegisterAsSingletonWithInterface.FullName ||
+			attributeFullName == RegisterAsTransientWithInterface.FullName
 		);
 	}
 
-	private static bool IsIgnoreInterface(string attributeName) {
-		return attributeName.Contains(nameof(RegisterAsScopedIgnoreInterface)) ||
-			attributeName.Contains(nameof(RegisterAsSingletonIgnoreInterface)) ||
-			attributeName.Contains(nameof(RegisterAsTransientIgnoreInterface))
+	private static bool IsIgnoreInterface(string attributeFullName) {
+		return attributeFullName == RegisterAsScoped.FullName ||
+			attributeFullName == RegisterAsSingleton.FullName ||
+			attributeFullName == RegisterAsTransient.FullName
 		;
 	}
 
@@ -112,51 +100,20 @@ public static class AutoDIService {
 			!type.IsAbstract &&
 			!type.IsGenericType &&
 			!type.IsNested &&
-			type.GetCustomAttributes(typeof(AutoDependencyRegistrationAttribute), true).Length > 0
+			type.GetCustomAttributes(AutoDIRegistrationAttribute.AttributeType, true).Length > 0
 		;
 	}
 
-	private static ServiceLifetime GetServiceLifetime(string attributeName) {
-		if (attributeName.Contains(nameof(RegisterAsScoped)) || attributeName.Contains(nameof(RegisterAsScopedIgnoreInterface))) {
+	private static ServiceLifetime CalcServiceLifetime(string attributeFullName) {
+		if (attributeFullName == RegisterAsScoped.FullName || attributeFullName == RegisterAsScopedWithInterface.FullName) {
 			return ServiceLifetime.Scoped;
 		}
-		if (attributeName.Contains(nameof(RegisterAsSingleton)) || attributeName.Contains(nameof(RegisterAsSingletonIgnoreInterface))) {
+		if (attributeFullName == RegisterAsSingleton.FullName || attributeFullName == RegisterAsSingletonWithInterface.FullName) {
 			return ServiceLifetime.Singleton;
 		}
-		return ServiceLifetime.Transient;
-	}
-
-	private static void AddServiceWithInterface(
-		RegisterServiceInfo serviceInfo,
-		IServiceCollection services
-	) {
-		foreach (var implementation in serviceInfo.interfaceTypes) {
-			services.Add(new ServiceDescriptor(
-				implementation,
-				serviceInfo.serviceType,
-				serviceInfo.serviceLifetime)
-			);
-			Console.WriteLine($"---> Register as {serviceInfo.serviceLifetime}: {serviceInfo.serviceType.FullName}");
-
-			// var message = $"{serviceInfo.ClassType?.Name}, {implementation} has been registered as {serviceInfo.ServiceLifetime}. ";
-			// classesRegistered.AppendLine(message);
-			// Log.Logger.Information("{Message}", message);
+		if (attributeFullName == RegisterAsTransient.FullName || attributeFullName == RegisterAsTransientWithInterface.FullName) {
+			return ServiceLifetime.Transient;
 		}
-	}
-
-	private static void AddServiceWithoutInterface(
-		RegisterServiceInfo serviceInfo,
-		IServiceCollection services
-	) {
-		services.Add(new ServiceDescriptor(
-			serviceInfo.serviceType!,
-			serviceInfo.serviceType!,
-			serviceInfo.serviceLifetime)
-		);
-		Console.WriteLine($"---> Register as {serviceInfo.serviceLifetime}: {serviceInfo.serviceType.FullName}");
-
-		// var message = $"{serviceInfo.ClassType?.Name} has been registered as {serviceInfo.ServiceLifetime}. ";
-		// classesRegistered.AppendLine(message);
-		// Log.Logger.Information("{Message}", message);
+		throw new InvalidDataException("Invalid attribute: " + attributeFullName);
 	}
 }
