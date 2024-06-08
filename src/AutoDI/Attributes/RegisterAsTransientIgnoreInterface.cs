@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 
-public class RegisterAsTransientIgnoreInterface : RegisterClassAttribute {
+public class RegisterAsTransientIgnoreInterface : AutoDependencyRegistrationAttribute {
 	public RegisterAsTransientIgnoreInterface() {
 		this.ServiceLifetime = ServiceLifetime.Transient;
 	}
