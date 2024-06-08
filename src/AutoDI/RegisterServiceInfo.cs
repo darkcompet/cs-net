@@ -10,14 +10,14 @@ using Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public class RegisterServiceInfo {
 	/// Service type.
-	public Type serviceType { get; set; }
+	public Type serviceType;
 
 	/// Type of interfaces that the class implements.
-	public IEnumerable<Type> interfaceTypes { get; set; }
+	public IEnumerable<Type> interfaceTypes;
 
 	/// One of: scoped, singletone, trasient.
-	public ServiceLifetime serviceLifetime { get; set; }
+	public ServiceLifetime serviceLifetime;
 
 	/// Ignore add pair of [interface, implement].
-	public bool ignoreInterface { get; set; }
+	public bool ignoreInterface;
 }

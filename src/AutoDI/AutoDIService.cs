@@ -29,8 +29,8 @@ public static class AutoDIService {
 				services.Add(new ServiceDescriptor(
 					serviceInfo.serviceType!,
 					serviceInfo.serviceType!,
-					serviceInfo.serviceLifetime)
-				);
+					serviceInfo.serviceLifetime
+				));
 			}
 			// Register with interface
 			else {
@@ -38,14 +38,15 @@ public static class AutoDIService {
 					services.Add(new ServiceDescriptor(
 						implementation,
 						serviceInfo.serviceType,
-						serviceInfo.serviceLifetime)
-					);
+						serviceInfo.serviceLifetime
+					));
 				}
 			}
 		}
 	}
 
-	public static IEnumerable<Assembly> GetAssemblies() {
+	/// Get .dll assembly file that be used to reflect.
+	private static List<Assembly> GetAssemblies() {
 		var assemblies = new List<Assembly>();
 		foreach (var assemblyFilePath in Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll")) {
 			assemblies.Add(Assembly.Load(AssemblyName.GetAssemblyName(assemblyFilePath)));
@@ -53,31 +54,33 @@ public static class AutoDIService {
 		return assemblies;
 	}
 
-	public static IEnumerable<RegisterServiceInfo> FindRegisteredClassesByAttribute(IEnumerable<Assembly> assembly) {
-		var classes = assembly
+	/// From assembly, find info of services that be registered with our attributes.
+	private static List<RegisterServiceInfo> FindRegisteredClassesByAttribute(IEnumerable<Assembly> assembly) {
+		var serviceTypes = assembly
 			.SelectMany(x => x.GetExportedTypes())
 			.Where(FilterTargetService)
 		;
 		// Map assemblies to services
 		var serviceInfos = new List<RegisterServiceInfo>();
-		foreach (var type in classes) {
-			var customAttribute = type.CustomAttributes.FirstOrDefault(att => IsOurRegisterClass(att.AttributeType.FullName));
+		foreach (var stype in serviceTypes) {
+			var customAttribute = stype.CustomAttributes.FirstOrDefault(att => IsAutoRegisterAttribute(att.AttributeType.FullName));
 			if (customAttribute != null) {
 				var attributeFullName = customAttribute.AttributeType.FullName!;
-				var typeInfo = type.GetTypeInfo();
+				var typeInfo = stype.GetTypeInfo();
 
 				serviceInfos.Add(new() {
 					serviceType = typeInfo,
 					interfaceTypes = typeInfo.ImplementedInterfaces,
 					serviceLifetime = CalcServiceLifetime(attributeFullName),
-					ignoreInterface = IsIgnoreInterface(attributeFullName)
+					ignoreInterface = IsIgnoreInterfaceAttribute(attributeFullName)
 				});
 			}
 		}
 		return serviceInfos;
 	}
 
-	private static bool IsOurRegisterClass(string? attributeFullName) {
+	/// Check whether the attribute is our attribute or not.
+	private static bool IsAutoRegisterAttribute(string? attributeFullName) {
 		return attributeFullName != null && (
 			attributeFullName == RegisterAsScoped.FullName ||
 			attributeFullName == RegisterAsSingleton.FullName ||
@@ -88,22 +91,23 @@ public static class AutoDIService {
 		);
 	}
 
-	private static bool IsIgnoreInterface(string attributeFullName) {
+	/// Check whether the attribute does ignore register interface or not.
+	private static bool IsIgnoreInterfaceAttribute(string attributeFullName) {
 		return attributeFullName == RegisterAsScoped.FullName ||
 			attributeFullName == RegisterAsSingleton.FullName ||
 			attributeFullName == RegisterAsTransient.FullName
 		;
 	}
 
+	/// We only target to class that has our register attribute.
 	private static bool FilterTargetService(Type type) {
 		return
-			!type.IsAbstract &&
-			!type.IsGenericType &&
-			!type.IsNested &&
+			!type.IsAbstract && !type.IsGenericType && !type.IsNested &&
 			type.GetCustomAttributes(AutoDIRegistrationAttribute.AttributeType, true).Length > 0
 		;
 	}
 
+	/// Calculate service lifetime from attribute fullname.
 	private static ServiceLifetime CalcServiceLifetime(string attributeFullName) {
 		if (attributeFullName == RegisterAsScoped.FullName || attributeFullName == RegisterAsScopedWithInterface.FullName) {
 			return ServiceLifetime.Scoped;

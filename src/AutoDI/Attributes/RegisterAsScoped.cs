@@ -3,8 +3,7 @@
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// This attribute which can be added on top of any class.
-/// Sets ServiceLifetime in the base <see cref="AutoDIRegistrationAttribute"/> to Scoped.
+/// Register the class as scoped without interface.
 /// </summary>
 public class RegisterAsScoped : AutoDIRegistrationAttribute {
 	public static readonly string FullName = typeof(RegisterAsScoped).FullName!;

@@ -3,8 +3,7 @@
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// This attribute which can be added on top of any class.
-/// Sets ServiceLifetime in the base <see cref="AutoDIRegistrationAttribute"/> to Singleton.
+/// Register the class as singleton without interface.
 /// </summary>
 public class RegisterAsSingleton : AutoDIRegistrationAttribute {
 	public static readonly string FullName = typeof(RegisterAsSingleton).FullName!;
