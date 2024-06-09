@@ -21,7 +21,7 @@ public static class AutoDIService {
 	/// <param name="services"></param>
 	public static void AutoRegisterDependencies(this IServiceCollection services) {
 		var assemblies = GetAssemblies();
-		var registeredServices = FindRegisteredClassesByAttribute(assemblies);
+		var registeredServices = FindRegisteredServicesByAttribute(assemblies);
 
 		foreach (var serviceInfo in registeredServices) {
 			// Register without interface
@@ -34,9 +34,9 @@ public static class AutoDIService {
 			}
 			// Register with interface
 			else {
-				foreach (var implementation in serviceInfo.interfaceTypes) {
+				foreach (var interfaceType in serviceInfo.interfaceTypes) {
 					services.Add(new ServiceDescriptor(
-						implementation,
+						interfaceType,
 						serviceInfo.serviceType,
 						serviceInfo.serviceLifetime
 					));
@@ -54,11 +54,11 @@ public static class AutoDIService {
 		return assemblies;
 	}
 
-	/// From assembly, find info of services that be registered with our attributes.
-	private static List<RegisterServiceInfo> FindRegisteredClassesByAttribute(IEnumerable<Assembly> assembly) {
+	/// From assembly, find info of services that be registered by our attributes.
+	private static List<RegisterServiceInfo> FindRegisteredServicesByAttribute(IEnumerable<Assembly> assembly) {
 		var serviceTypes = assembly
 			.SelectMany(x => x.GetExportedTypes())
-			.Where(FilterTargetService)
+			.Where(FilterOurAutoDIService)
 		;
 		// Map assemblies to services
 		var serviceInfos = new List<RegisterServiceInfo>();
@@ -79,15 +79,23 @@ public static class AutoDIService {
 		return serviceInfos;
 	}
 
+	/// We only target to class that be annotated with our <see cref="AutoDIRegistrationAttribute">.
+	private static bool FilterOurAutoDIService(Type type) {
+		return
+			!type.IsAbstract && !type.IsGenericType && !type.IsNested &&
+			type.GetCustomAttribute(AutoDIRegistrationAttribute.AttributeType, true) != null
+		;
+	}
+
 	/// Check whether the attribute is our attribute or not.
 	private static bool IsAutoRegisterAttribute(string? attributeFullName) {
 		return attributeFullName != null && (
 			attributeFullName == RegisterAsScoped.FullName ||
 			attributeFullName == RegisterAsSingleton.FullName ||
 			attributeFullName == RegisterAsTransient.FullName ||
-			attributeFullName == RegisterAsScopedWithInterface.FullName ||
-			attributeFullName == RegisterAsSingletonWithInterface.FullName ||
-			attributeFullName == RegisterAsTransientWithInterface.FullName
+			attributeFullName == RegisterAsScopedWithInterfaces.FullName ||
+			attributeFullName == RegisterAsSingletonWithInterfaces.FullName ||
+			attributeFullName == RegisterAsTransientWithInterfaces.FullName
 		);
 	}
 
@@ -99,23 +107,15 @@ public static class AutoDIService {
 		;
 	}
 
-	/// We only target to class that has our register attribute.
-	private static bool FilterTargetService(Type type) {
-		return
-			!type.IsAbstract && !type.IsGenericType && !type.IsNested &&
-			type.GetCustomAttributes(AutoDIRegistrationAttribute.AttributeType, true).Length > 0
-		;
-	}
-
 	/// Calculate service lifetime from attribute fullname.
 	private static ServiceLifetime CalcServiceLifetime(string attributeFullName) {
-		if (attributeFullName == RegisterAsScoped.FullName || attributeFullName == RegisterAsScopedWithInterface.FullName) {
+		if (attributeFullName == RegisterAsScoped.FullName || attributeFullName == RegisterAsScopedWithInterfaces.FullName) {
 			return ServiceLifetime.Scoped;
 		}
-		if (attributeFullName == RegisterAsSingleton.FullName || attributeFullName == RegisterAsSingletonWithInterface.FullName) {
+		if (attributeFullName == RegisterAsSingleton.FullName || attributeFullName == RegisterAsSingletonWithInterfaces.FullName) {
 			return ServiceLifetime.Singleton;
 		}
-		if (attributeFullName == RegisterAsTransient.FullName || attributeFullName == RegisterAsTransientWithInterface.FullName) {
+		if (attributeFullName == RegisterAsTransient.FullName || attributeFullName == RegisterAsTransientWithInterfaces.FullName) {
 			return ServiceLifetime.Transient;
 		}
 		throw new InvalidDataException("Invalid attribute: " + attributeFullName);
