@@ -19,7 +19,7 @@ public static class AutoDIService {
 	/// transient.
 	/// </summary>
 	/// <param name="services"></param>
-	public static void AutoRegisterDependencies(this IServiceCollection services) {
+	public static void AutoRegisterDependencies(this IServiceCollection services, bool registerControllers = true) {
 		var assemblies = GetAssemblies();
 		var registeredServices = FindRegisteredServicesByAttribute(assemblies);
 
@@ -42,6 +42,10 @@ public static class AutoDIService {
 					));
 				}
 			}
+		}
+
+		if (registerControllers) {
+			services.AddControllers();
 		}
 	}
 
