@@ -2,25 +2,20 @@
 
 This provides Core for dotnet (.NET Core).
 
-- Features
 
-	```bash
-	- Core.
-	```
+## Dependencies
 
-- Dependencies
-
-	```bash
+```bash
 	# Tool.Compet.Core
-	https://github.com/darkcompet/csharp-core
-	```
+	https://github.com/darkcompet/cs-core
+```
 
 
-## How to install
+## Installation
 
 - Just include it into project by add as git-submodule.
 	
-	```bash
+```bash
 	# Tool.Compet.Core
-	git submodule add https://github.com/darkcompet/csharp-net-core.git
-	```
+	git submodule add https://github.com/darkcompet/cs-net.git
+```
